@@ -528,4 +528,429 @@ function DayCard({ day, onComplete, onUncomplete, onLog }) {
 
           {actual && (
             <div style={{
-             
+              marginTop: 10, padding: "8px 10px", background: "#1e3a5f",
+              borderRadius: 8, fontSize: 11,
+            }}>
+              <span style={{ color: "#4ade80", fontWeight: 700 }}>✓ Realizado: </span>
+              {actual.distance && <span style={{ color: "#a5f3fc" }}>{actual.distance}km </span>}
+              {actual.duration && <span style={{ color: "#a5f3fc" }}>{actual.duration} </span>}
+              {actual.pace && <span style={{ color: "#a5f3fc" }}>@ {actual.pace}/km </span>}
+              {actual.notes && <span style={{ color: "#64748b" }}>— {actual.notes}</span>}
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginLeft: 10 }}>
+          <button onClick={() => onLog(day)} style={{
+            padding: "6px 10px", background: "#1e293b", border: "1px solid #334155",
+            borderRadius: 8, color: "#94a3b8", fontSize: 11, cursor: "pointer", whiteSpace: "nowrap",
+          }}>📝 Log</button>
+
+          {completed ? (
+            <button onClick={() => onUncomplete(day.date)} style={{
+              padding: "6px 10px", background: "#052e16", border: "1px solid #166534",
+              borderRadius: 8, color: "#4ade80", fontSize: 11, cursor: "pointer",
+            }}>✓ Hecho</button>
+          ) : (
+            <button onClick={() => onComplete(day.date)} style={{
+              padding: "6px 10px", background: "#1e293b", border: "1px solid #334155",
+              borderRadius: 8, color: "#475569", fontSize: 11, cursor: "pointer",
+            }}>○ Marcar</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WeekView({ weekDays, onComplete, onUncomplete, onLog }) {
+  const [open, setOpen] = useState(true);
+  if (!weekDays.length) return null;
+
+  const weekNum = weekDays[0].weekNum;
+  const phase = weekDays[0].phase;
+  const completedCount = weekDays.filter(d => d.completed).length;
+  const totalKm = weekDays
+    .filter(d => d.session.distance && ["easy", "long", "series"].includes(d.session.type))
+    .reduce((s, d) => s + (d.session.distance || 0), 0);
+
+  const progressPct = weekDays.length ? Math.round((completedCount / weekDays.length) * 100) : 0;
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: "100%", background: "#0f172a", border: "1px solid #1e293b",
+          borderRadius: 10, padding: "12px 16px", cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          marginBottom: open ? 10 : 0,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 13, fontWeight: 800, color: "#f8fafc" }}>Sem {weekNum}</span>
+          <span style={{
+            fontSize: 10, fontWeight: 700, color: "#818cf8",
+            background: "#818cf822", padding: "2px 8px", borderRadius: 6, letterSpacing: 1,
+          }}>{phase.toUpperCase()}</span>
+          <span style={{ fontSize: 11, color: "#64748b" }}>~{Math.round(totalKm)}km carrera</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ fontSize: 11, color: completedCount === weekDays.length ? "#4ade80" : "#64748b" }}>
+            {completedCount}/{weekDays.length}
+          </div>
+          <div style={{
+            width: 40, height: 4, background: "#1e293b", borderRadius: 2, overflow: "hidden",
+          }}>
+            <div style={{ width: `${progressPct}%`, height: "100%", background: "#6366f1", borderRadius: 2 }} />
+          </div>
+          <span style={{ color: "#475569", fontSize: 12 }}>{open ? "▲" : "▼"}</span>
+        </div>
+      </button>
+
+      {open && weekDays.map(d => (
+        <DayCard key={d.date} day={d} onComplete={onComplete} onUncomplete={onUncomplete} onLog={onLog} />
+      ))}
+    </div>
+  );
+}
+
+function StatsPanel({ plan }) {
+  const total = plan.length;
+  const done = plan.filter(d => d.completed).length;
+  const kmPlanned = plan
+    .filter(d => ["easy", "long", "series"].includes(d.session.type) && d.session.distance)
+    .reduce((s, d) => s + d.session.distance, 0);
+  const kmDone = plan
+    .filter(d => d.completed && d.actual?.distance)
+    .reduce((s, d) => s + parseFloat(d.actual.distance || 0), 0);
+
+  const raceDay = new Date("2026-09-27");
+  const today = new Date();
+  const daysLeft = Math.max(0, Math.floor((raceDay - today) / 86400000));
+
+  return (
+    <div style={{
+      display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 20,
+    }}>
+      {[
+        { label: "Días para la carrera", value: daysLeft, color: "#fbbf24" },
+        { label: "Sesiones completadas", value: `${done}/${total}`, color: "#4ade80" },
+        { label: "Km planificados", value: `${Math.round(kmPlanned)}km`, color: "#818cf8" },
+        { label: "Km reales", value: `${Math.round(kmDone)}km`, color: "#38bdf8" },
+      ].map(stat => (
+        <div key={stat.label} style={{
+          background: "#0f172a", border: "1px solid #1e293b",
+          borderRadius: 12, padding: "14px", textAlign: "center",
+        }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: stat.color }}>{stat.value}</div>
+          <div style={{ fontSize: 10, color: "#475569", marginTop: 3, letterSpacing: 0.5 }}>{stat.label.toUpperCase()}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================
+// APP
+// ============================================================
+export default function App() {
+  const [plan, setPlan] = useState(() => {
+    const saved = loadData();
+    return saved || generatePlan();
+  });
+
+  const [filterPhase, setFilterPhase] = useState("all");
+  const [filterType, setFilterType] = useState("all");
+  const [showCompleted, setShowCompleted] = useState(true);
+  const [logging, setLogging] = useState(null);
+  const [view, setView] = useState("calendar"); // calendar | stats | race
+
+  useEffect(() => { saveData(plan); }, [plan]);
+
+  function markComplete(date) {
+    setPlan(p => p.map(d => d.date === date ? { ...d, completed: true } : d));
+  }
+  function markUncomplete(date) {
+    setPlan(p => p.map(d => d.date === date ? { ...d, completed: false } : d));
+  }
+  function saveLog(form) {
+    setPlan(p => p.map(d => d.date === logging.date
+      ? { ...d, completed: true, actual: form } : d));
+    setLogging(null);
+  }
+
+  const phases = ["all", "Base 1", "Base 2", "Desarrollo", "Específico", "Pico", "Taper"];
+  const types = ["all", "easy", "series", "long", "gym", "bike", "swim", "race", "rest"];
+
+  const filteredPlan = useMemo(() => plan.filter(d => {
+    if (!showCompleted && d.completed) return false;
+    if (filterPhase !== "all" && d.phase !== filterPhase) return false;
+    if (filterType !== "all" && d.session.type !== filterType) return false;
+    return true;
+  }), [plan, filterPhase, filterType, showCompleted]);
+
+  // Group by week
+  const weeks = useMemo(() => {
+    const map = {};
+    filteredPlan.forEach(d => {
+      if (!map[d.weekNum]) map[d.weekNum] = [];
+      map[d.weekNum].push(d);
+    });
+    return Object.entries(map).map(([wk, days]) => ({ weekNum: parseInt(wk), days }));
+  }, [filteredPlan]);
+
+  const today = new Date().toISOString().split("T")[0];
+  const todayPlan = plan.find(d => d.date === today);
+
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: "#020817",
+      color: "#f8fafc",
+      fontFamily: "'Syne', 'Outfit', system-ui, sans-serif",
+      paddingBottom: 80,
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Outfit:wght@300;400;500;600&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #020817; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+        button:hover { opacity: 0.85; }
+      `}</style>
+
+      {/* Header */}
+      <div style={{
+        background: "linear-gradient(180deg, #0d1b35 0%, #020817 100%)",
+        borderBottom: "1px solid #1e293b",
+        padding: "20px 16px 16px",
+        position: "sticky", top: 0, zIndex: 50,
+      }}>
+        <div style={{ maxWidth: 600, margin: "0 auto" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 11, letterSpacing: 3, color: "#6366f1", fontWeight: 700, marginBottom: 2 }}>
+                🏃 MEDIA MARATÓN
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: -0.5 }}>
+                Valladolid <span style={{ color: "#6366f1" }}>27/09/26</span>
+              </div>
+              <div style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>
+                Objetivo: <span style={{ color: "#fbbf24", fontWeight: 700 }}>sub 1:30:00</span>
+              </div>
+            </div>
+            <div style={{
+              background: "#6366f111", border: "1px solid #6366f133",
+              borderRadius: 12, padding: "10px 14px", textAlign: "center",
+            }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "#818cf8" }}>
+                {Math.max(0, Math.floor((new Date("2026-09-27") - new Date()) / 86400000))}
+              </div>
+              <div style={{ fontSize: 9, color: "#475569", letterSpacing: 1 }}>DÍAS</div>
+            </div>
+          </div>
+
+          {/* Nav */}
+          <div style={{ display: "flex", gap: 6 }}>
+            {[["calendar", "📅 Plan"], ["stats", "📊 Stats"], ["race", "🏁 Carrera"]].map(([v, l]) => (
+              <button key={v} onClick={() => setView(v)} style={{
+                flex: 1, padding: "7px 0", borderRadius: 8, border: "none", cursor: "pointer",
+                background: view === v ? "#6366f1" : "#1e293b",
+                color: view === v ? "#fff" : "#64748b",
+                fontSize: 11, fontWeight: 700, letterSpacing: 0.5,
+              }}>{l}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 600, margin: "0 auto", padding: "16px" }}>
+
+        {/* TODAY BANNER */}
+        {todayPlan && view === "calendar" && (
+          <div style={{
+            background: "linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)",
+            border: "1px solid #4f46e5",
+            borderRadius: 14, padding: "14px 16px", marginBottom: 16,
+          }}>
+            <div style={{ fontSize: 10, letterSpacing: 2, color: "#6366f1", fontWeight: 700, marginBottom: 6 }}>
+              HOY · {formatDate(todayPlan.date)}
+            </div>
+            <DayCard day={todayPlan} onComplete={markComplete} onUncomplete={markUncomplete} onLog={setLogging} />
+          </div>
+        )}
+
+        {view === "calendar" && (
+          <>
+            <StatsPanel plan={plan} />
+
+            {/* Filters */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 8 }}>
+                {phases.map(p => (
+                  <button key={p} onClick={() => setFilterPhase(p)} style={{
+                    whiteSpace: "nowrap", padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer",
+                    background: filterPhase === p ? "#6366f1" : "#1e293b",
+                    color: filterPhase === p ? "#fff" : "#64748b",
+                    fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+                  }}>{p === "all" ? "Todas" : p}</button>
+                ))}
+              </div>
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 8 }}>
+                {types.map(t => (
+                  <button key={t} onClick={() => setFilterType(t)} style={{
+                    whiteSpace: "nowrap", padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer",
+                    background: filterType === t ? typeColor(t) + "55" : "#1e293b",
+                    color: filterType === t ? typeColor(t) : "#64748b",
+                    fontSize: 10, fontWeight: 700, border: filterType === t ? `1px solid ${typeColor(t)}` : "1px solid transparent",
+                  }}>{typeIcon(t)} {t === "all" ? "Todo" : t}</button>
+                ))}
+              </div>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#64748b", cursor: "pointer" }}>
+                <input type="checkbox" checked={showCompleted} onChange={e => setShowCompleted(e.target.checked)} />
+                Mostrar completados
+              </label>
+            </div>
+
+            {weeks.map(({ weekNum, days }) => (
+              <WeekView key={weekNum} weekDays={days} onComplete={markComplete} onUncomplete={markUncomplete} onLog={setLogging} />
+            ))}
+          </>
+        )}
+
+        {view === "stats" && (
+          <div>
+            <StatsPanel plan={plan} />
+            <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#f8fafc", marginBottom: 12 }}>Progreso por tipo</div>
+              {["easy", "long", "series", "gym", "bike", "swim"].map(type => {
+                const total = plan.filter(d => d.session.type === type).length;
+                const done = plan.filter(d => d.session.type === type && d.completed).length;
+                if (!total) return null;
+                return (
+                  <div key={type} style={{ marginBottom: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <span style={{ fontSize: 11, color: "#94a3b8" }}>{typeIcon(type)} {type}</span>
+                      <span style={{ fontSize: 11, color: typeColor(type) }}>{done}/{total}</span>
+                    </div>
+                    <div style={{ height: 4, background: "#1e293b", borderRadius: 2 }}>
+                      <div style={{
+                        height: "100%", width: `${Math.round((done / total) * 100)}%`,
+                        background: typeColor(type), borderRadius: 2, transition: "width 0.5s"
+                      }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#f8fafc", marginBottom: 12 }}>Tus referencias</div>
+              {[
+                { label: "HM Madrid 26 Abr", value: "1:31:48", sub: "4:21/km" },
+                { label: "10k Familias", value: "40:04", sub: "4:00/km" },
+                { label: "Objetivo Valladolid", value: "< 1:30:00", sub: "4:15/km", highlight: true },
+                { label: "Ritmo series objetivo", value: "3:55–4:05/km", sub: "VO2max" },
+                { label: "Ritmo umbral", value: "4:15–4:25/km", sub: "Tempo" },
+                { label: "Ritmo rodaje fácil", value: "5:40–6:10/km", sub: "Z2" },
+              ].map(r => (
+                <div key={r.label} style={{
+                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  padding: "8px 0", borderBottom: "1px solid #1e293b",
+                }}>
+                  <span style={{ fontSize: 12, color: "#94a3b8" }}>{r.label}</span>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: r.highlight ? "#fbbf24" : "#f8fafc" }}>{r.value}</div>
+                    <div style={{ fontSize: 10, color: "#475569" }}>{r.sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {view === "race" && (
+          <div>
+            <div style={{
+              background: "linear-gradient(135deg, #1c1917 0%, #0f172a 100%)",
+              border: "1px solid #fbbf2433", borderRadius: 16, padding: 20, marginBottom: 16,
+            }}>
+              <div style={{ fontSize: 10, letterSpacing: 3, color: "#fbbf24", fontWeight: 700, marginBottom: 8 }}>
+                🏆 DÍA DE CARRERA — 27 SEPT 2026
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 4 }}>Media Maratón Valladolid</div>
+              <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 16 }}>Recorrido plano · Objetivo sub 1:30:00</div>
+
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#fbbf24", marginBottom: 8 }}>ESTRATEGIA DE CARRERA</div>
+                {[
+                  { km: "0–5", pace: "4:20/km", time: "~21:40", note: "Salida controlada, no te dejes llevar" },
+                  { km: "5–10", pace: "4:16/km", time: "~21:20", note: "Ritmo objetivo, encuentra el surco" },
+                  { km: "10–18", pace: "4:12/km", time: "~33:36", note: "Bloque principal, mantén" },
+                  { km: "18–21.1", pace: "4:05/km", time: "~12:42", note: "Si te quedan fuerzas, ¡aprieta!" },
+                ].map(s => (
+                  <div key={s.km} style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "8px 0", borderBottom: "1px solid #1e293b",
+                  }}>
+                    <div style={{
+                      minWidth: 50, fontSize: 10, fontWeight: 700, color: "#fbbf24",
+                      background: "#fbbf2411", padding: "2px 6px", borderRadius: 6, textAlign: "center",
+                    }}>km {s.km}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#f8fafc" }}>{s.pace}</div>
+                      <div style={{ fontSize: 10, color: "#64748b" }}>{s.note}</div>
+                    </div>
+                    <div style={{ fontSize: 11, color: "#94a3b8" }}>{s.time}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ background: "#1e293b", borderRadius: 10, padding: 12, marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8", marginBottom: 6 }}>🍌 DÍA ANTES</div>
+                <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.7 }}>
+                  · Pasta o arroz en la cena, nada nuevo<br/>
+                  · Hidratación extra todo el día<br/>
+                  · Sal a pasear 15–20min<br/>
+                  · En cama a las 22:30 aunque no puedas dormir
+                </div>
+              </div>
+
+              <div style={{ background: "#1e293b", borderRadius: 10, padding: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#4ade80", marginBottom: 6 }}>☀️ DÍA DE CARRERA</div>
+                <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.7 }}>
+                  · Desayuno 3h antes: avena + plátano + café<br/>
+                  · Gel + agua en km 7 y km 14<br/>
+                  · Hidratación en TODOS los avituallamientos<br/>
+                  · Calentamiento 15min, últimos 3min suave<br/>
+                  · Ropa y zapatillas ya probadas en entrenos
+                </div>
+              </div>
+            </div>
+
+            <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 12, padding: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#f8fafc", marginBottom: 12 }}>📈 Tu progresión prevista</div>
+              <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.8 }}>
+                Con tus tiempos actuales (HM 1:31:48, 10k 40:04) tu <strong style={{ color: "#818cf8" }}>ritmo umbral lácteo</strong> está ~4:18–4:22/km.<br/><br/>
+                Para bajar de 1:30 necesitas ~4:15/km. En 17 semanas con este plan:<br/>
+                · Km semanales: 45 → 68 → taper<br/>
+                · Series progresivas para bajar VMA<br/>
+                · Fuerza para economía de carrera<br/><br/>
+                La mejora esperada es <strong style={{ color: "#4ade80" }}>1:28:30–1:29:30</strong> 🎯
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Log modal */}
+      {logging && (
+        <ActualForm day={logging} onSave={saveLog} onClose={() => setLogging(null)} />
+      )}
+
+      {/* Bottom safe area */}
+      <div style={{ height: 30 }} />
+    </div>
+  );
+}
