@@ -87,6 +87,7 @@ const swimSessions = [
   { label:"300m cal + 10x100m (desc 12s) + 200m enf", distanceM:2500, detail:"Series cortas con poco descanso. Trabajo de resistencia a la fatiga." },
   { label:"ÚLTIMA SEMANA NATACIÓN — 200m cal + 600m continuo + 4x100m (desc 15s) + 200m enf", distanceM:2100, detail:"Última sesión de natación. Disfrútala, ha sido una gran herramienta de recuperación activa." },
 ];
+
 // ============================================================
 // BIKE SESSIONS — varied, HM-useful
 // ============================================================
@@ -251,7 +252,8 @@ function generatePlan() {
     cur.setDate(cur.getDate()+1);
   }
   return days;
-    }
+}
+
 // ============================================================
 // STORAGE
 // ============================================================
@@ -468,6 +470,7 @@ function WeekView({weekDays,onComplete,onUncomplete,onLog}){
     </div>
   );
 }
+
 // ============================================================
 // UNASSIGNED TRAY
 // ============================================================
@@ -739,4 +742,108 @@ export default function App(){
                 <span style={{fontSize:8,letterSpacing:0.5,fontWeight:700}}>{label.toUpperCase()}</span>
               </button>
             ))}
-     
+          </div>
+        </div>
+      </div>
+
+      {/* CONTENT */}
+      <div style={{maxWidth:560,margin:"0 auto",padding:"13px 13px"}}>
+
+        {todayPlan&&view==="calendar"&&(
+          <div style={{background:"linear-gradient(135deg,#1e1b4b 0%,#0f172a 100%)",border:"1px solid #4f46e5",borderRadius:14,padding:"12px 13px",marginBottom:13}}>
+            <div style={{fontSize:9,letterSpacing:2,color:"#6366f1",fontWeight:700,marginBottom:5}}>HOY · {fmtDate(todayPlan.date)}</div>
+            <DayCard day={todayPlan} onComplete={markComplete} onUncomplete={markUncomplete} onLog={setLogging}/>
+          </div>
+        )}
+
+        {view==="calendar"&&(
+          <>
+            <StatsPanel plan={plan}/>
+            {unassigned.length>0&&(
+              <button onClick={()=>setShowTray(true)} style={{width:"100%",background:"#fbbf2411",border:"1px solid #fbbf24",borderRadius:12,padding:"10px 13px",marginBottom:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{textAlign:"left"}}><div style={{fontSize:13,fontWeight:700,color:"#fbbf24"}}>⚠️ {unassigned.length} actividad{unassigned.length>1?"es":""} sin asignar</div><div style={{fontSize:10,color:"#92400e",marginTop:1}}>Pulsa para asignarlas</div></div>
+                <span style={{color:"#fbbf24",fontSize:18}}>›</span>
+              </button>
+            )}
+            <div style={{marginBottom:11}}>
+              <div style={{display:"flex",gap:5,overflowX:"auto",paddingBottom:3,marginBottom:6,WebkitOverflowScrolling:"touch"}}>
+                {phases.map(p=><button key={p} onClick={()=>setFilterPhase(p)} style={{whiteSpace:"nowrap",padding:"5px 9px",borderRadius:7,border:"none",cursor:"pointer",background:filterPhase===p?"#6366f1":"#1e293b",color:filterPhase===p?"#fff":"#64748b",fontSize:10,fontWeight:700,flexShrink:0}}>{p==="all"?"Todas":p}</button>)}
+              </div>
+              <div style={{display:"flex",gap:5,overflowX:"auto",paddingBottom:3,marginBottom:6,WebkitOverflowScrolling:"touch"}}>
+                {types.map(t=><button key={t} onClick={()=>setFilterType(t)} style={{whiteSpace:"nowrap",padding:"5px 9px",borderRadius:7,border:filterType===t?`1px solid ${typeColor(t)}`:"1px solid transparent",cursor:"pointer",background:filterType===t?typeColor(t)+"44":"#1e293b",color:filterType===t?typeColor(t):"#64748b",fontSize:10,fontWeight:700,flexShrink:0}}>{typeIcon(t)} {t==="all"?"Todo":t}</button>)}
+              </div>
+              <label style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"#64748b",cursor:"pointer"}}>
+                <input type="checkbox" checked={showCompleted} onChange={e=>setShowCompleted(e.target.checked)}/> Mostrar completados
+              </label>
+            </div>
+            {weeks.map(({weekNum,days})=><WeekView key={weekNum} weekDays={days} onComplete={markComplete} onUncomplete={markUncomplete} onLog={setLogging}/>)}
+          </>
+        )}
+
+        {view==="stats"&&(
+          <div>
+            <StatsPanel plan={plan}/>
+            <div style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:12,padding:14,marginBottom:12}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#f8fafc",marginBottom:11}}>Progreso por tipo</div>
+              {["easy","long","series","gym","bike","swim"].map(type=>{
+                const tot=plan.filter(d=>d.session.type===type).length;
+                const dn=plan.filter(d=>d.session.type===type&&d.completed).length;
+                if(!tot) return null;
+                return(<div key={type} style={{marginBottom:9}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}><span style={{fontSize:11,color:"#94a3b8"}}>{typeIcon(type)} {type}</span><span style={{fontSize:11,color:typeColor(type)}}>{dn}/{tot}</span></div>
+                  <div style={{height:4,background:"#1e293b",borderRadius:2}}><div style={{height:"100%",width:`${Math.round((dn/tot)*100)}%`,background:typeColor(type),borderRadius:2}}/></div>
+                </div>);
+              })}
+            </div>
+            <div style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:12,padding:14}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#f8fafc",marginBottom:11}}>Referencias de ritmo</div>
+              {[{l:"HM Madrid 26 Abr",v:"1:31:48",s:"4:21/km"},{l:"10k Familias",v:"40:04",s:"4:00/km"},{l:"Objetivo Valladolid",v:"< 1:30:00",s:"4:15/km",hl:true},{l:"Series objetivo",v:"3:55–4:05/km",s:"VO2max"},{l:"Umbral",v:"4:15–4:25/km",s:"Tempo"},{l:"Rodaje fácil",v:"5:40–6:10/km",s:"Z2"}].map(r=>(
+                <div key={r.l} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid #1e293b"}}>
+                  <span style={{fontSize:11,color:"#94a3b8"}}>{r.l}</span>
+                  <div style={{textAlign:"right"}}><div style={{fontSize:12,fontWeight:700,color:r.hl?"#fbbf24":"#f8fafc"}}>{r.v}</div><div style={{fontSize:9,color:"#475569"}}>{r.s}</div></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {view==="strava"&&(
+          <StravaManager plan={plan} stravaToken={stravaToken} unassigned={unassigned} onAssign={handleAssign} onDismiss={handleDismiss} onSync={syncStrava} syncing={syncing} allStravaActivities={allActivities}/>
+        )}
+
+        {view==="race"&&(
+          <div>
+            <div style={{background:"linear-gradient(135deg,#1c1917 0%,#0f172a 100%)",border:"1px solid #fbbf2433",borderRadius:16,padding:16,marginBottom:13}}>
+              <div style={{fontSize:9,letterSpacing:3,color:"#fbbf24",fontWeight:700,marginBottom:5}}>🏆 27 SEPT 2026</div>
+              <div style={{fontSize:16,fontWeight:800,marginBottom:3}}>Media Maratón Valladolid</div>
+              <div style={{fontSize:11,color:"#94a3b8",marginBottom:13}}>Recorrido plano · Sub 1:30:00</div>
+              {[{km:"0–5",pace:"4:20/km",time:"~21:40",note:"Salida controlada"},{km:"5–10",pace:"4:16/km",time:"~21:20",note:"Ritmo objetivo"},{km:"10–18",pace:"4:12/km",time:"~33:36",note:"Mantén"},{km:"18–21.1",pace:"4:05/km",time:"~12:42",note:"¡A fondo!"}].map(s=>(
+                <div key={s.km} style={{display:"flex",alignItems:"center",gap:9,padding:"7px 0",borderBottom:"1px solid #1e293b"}}>
+                  <div style={{minWidth:46,fontSize:9,fontWeight:700,color:"#fbbf24",background:"#fbbf2411",padding:"2px 5px",borderRadius:5,textAlign:"center"}}>km {s.km}</div>
+                  <div style={{flex:1}}><div style={{fontSize:12,fontWeight:700}}>{s.pace}</div><div style={{fontSize:10,color:"#64748b"}}>{s.note}</div></div>
+                  <div style={{fontSize:10,color:"#94a3b8"}}>{s.time}</div>
+                </div>
+              ))}
+              <div style={{background:"#1e293b",borderRadius:9,padding:11,marginTop:13,marginBottom:9}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#38bdf8",marginBottom:4}}>🍌 DÍA ANTES</div>
+                <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.7}}>· Pasta o arroz, nada nuevo<br/>· Hidratación extra todo el día<br/>· Paseo 15–20min<br/>· En cama a las 22:30</div>
+              </div>
+              <div style={{background:"#1e293b",borderRadius:9,padding:11}}>
+                <div style={{fontSize:10,fontWeight:700,color:"#4ade80",marginBottom:4}}>☀️ DÍA DE CARRERA</div>
+                <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.7}}>· Desayuno 3h antes: avena + plátano + café<br/>· Gel + agua en km 7 y km 14<br/>· Hidratación en TODOS los avituallamientos<br/>· Calentamiento 15min<br/>· Ropa y zapatillas ya probadas</div>
+              </div>
+            </div>
+            <div style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:12,padding:14}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#f8fafc",marginBottom:9}}>📈 Progresión prevista</div>
+              <div style={{fontSize:11,color:"#64748b",lineHeight:1.8}}>Umbral actual ~4:18–4:22/km. Necesitas 4:15/km para bajar de 1:30.<br/><br/>Con este plan:<br/>· Carrera: 45 → 68km/semana → taper<br/>· Series progresivas para bajar VMA<br/>· Fuerza + bici para economía de carrera<br/>· Natación para recuperación activa<br/><br/>Mejora esperada: <strong style={{color:"#4ade80"}}>1:28:30–1:29:30</strong> 🎯</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {logging&&<ActualForm day={logging} onSave={saveLog} onClose={()=>setLogging(null)}/>}
+      {showTray&&unassigned.length>0&&<UnassignedTray unassigned={unassigned} plan={plan} onAssign={handleAssign} onDismiss={handleDismiss} onClose={()=>setShowTray(false)}/>}
+      <div style={{height:20}}/>
+    </div>
+  );
+}
